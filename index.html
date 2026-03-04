@@ -18,13 +18,8 @@
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
         
-        /* Basis-Style für das Ergebnisfeld */
         .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; transition: all 0.3s ease; border-left: 5px solid transparent; }
-        
-        /* GRÜN: Alles okay */
         .is-success { border-left-color: var(--success); background: var(--success-bg); }
-        
-        /* GELB/ORANGE: Warnung (Kippen oder Überlast) */
         .is-warning { border-left-color: var(--accent); background: var(--warn-bg); }
         
         .warning-text { margin-top: 10px; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
@@ -47,7 +42,10 @@
     </div>
 
     <div class="info-box">
-        <strong>Vorgaben:</strong> Fläche 1200x800mm | Max. 180kg
+        <strong>Vorgaben:</strong><br>
+        Blister: 1200 x 800 mm<br>
+        Nutzfläche: 1000 x 700 mm<br>
+        Max. Last: 180 kg
     </div>
     
     <div class="input-group">
@@ -77,7 +75,7 @@
 
     <div class="input-group">
         <label>Höhe (mm)</label>
-        <input type="number" id="partH" value="150" oninput="calculate()">
+        <input type="number" id="partH" value="50" oninput="calculate()">
     </div>
 
     <div class="input-group">
@@ -90,8 +88,8 @@
     </div>
 
     <div class="input-group">
-        <label>Abstand (mm)</label>
-        <input type="number" id="gap" value="12" oninput="calculate()">
+        <label>Abstand (min. 15 mm)</label>
+        <input type="number" id="gap" value="15" min="15" oninput="calculate()">
     </div>
 
     <div id="resultText" class="output">Berechne...</div>
@@ -104,8 +102,10 @@
 </div>
 
 <script>
-const FIXED_AW = 1200;
-const FIXED_AL = 800;
+const VISUAL_W = 1200; // Gesamte Blistergröße
+const VISUAL_H = 800;
+const USABLE_W = 1000; // Tatsächlich nutzbare Fläche
+const USABLE_H = 700;
 const MAX_WEIGHT = 180;
 
 function toggleInputs() {
@@ -119,7 +119,11 @@ function calculate() {
     const canvas = document.getElementById('layoutCanvas');
     const ctx = canvas.getContext('2d');
     
-    const gap = parseFloat(document.getElementById('gap').value) || 0;
+    // Abstand validieren (Minimum 15)
+    let gapInput = document.getElementById('gap');
+    let gap = parseFloat(gapInput.value) || 0;
+    if (gap < 15) gap = 15;
+
     const h = parseFloat(document.getElementById('partH').value) || 0;
     const density = parseFloat(document.getElementById('material').value);
     const shape = document.getElementById('shapeType').value;
@@ -134,32 +138,36 @@ function calculate() {
         volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
+    // Raster-Berechnung auf USABLE_W / USABLE_H
     const colStep = pw + gap;
     const rowStep = pl + gap;
-    const cols = (colStep > 0) ? Math.floor((FIXED_AW + gap) / colStep) : 0;
-    const rows = (rowStep > 0) ? Math.floor((FIXED_AL + gap) / rowStep) : 0;
+    const cols = (colStep > 0) ? Math.floor((USABLE_W + gap) / colStep) : 0;
+    const rows = (rowStep > 0) ? Math.floor((USABLE_H + gap) / rowStep) : 0;
     const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
     const weightPerPart = (volume * density) / 1000;
     const totalWeight = total * weightPerPart;
-    
-    // Kipp-Check: Höhe im Verhältnis zur kleinsten Standseite
     const minSide = Math.min(pw, pl);
     const isUnstable = (minSide > 0 && h > (minSide * 1.5));
     const isOverweight = (totalWeight > MAX_WEIGHT);
 
-    // Grafik zeichnen
+    // Grafik zeichnen (Skalierung auf VISUAL_W)
     const scale = 0.6; 
-    canvas.width = FIXED_AW * scale;
-    canvas.height = FIXED_AL * scale;
+    canvas.width = VISUAL_W * scale;
+    canvas.height = VISUAL_H * scale;
 
+    // Zentrierung der Bauteil-Gruppe innerhalb der VISUAL_W Fläche
     const blockWidth = (cols * colStep) - gap;
     const blockHeight = (rows * rowStep) - gap;
-    const offsetX = (FIXED_AW - blockWidth) / 2;
-    const offsetY = (FIXED_AL - blockHeight) / 2;
+    const offsetX = (VISUAL_W - blockWidth) / 2;
+    const offsetY = (VISUAL_H - blockHeight) / 2;
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Zeichne graue Begrenzung der Nutzzone (optional zur Kontrolle)
+    ctx.strokeStyle = "#eee";
+    ctx.strokeRect(((VISUAL_W-USABLE_W)/2)*scale, ((VISUAL_H-USABLE_H)/2)*scale, USABLE_W * scale, USABLE_H * scale);
 
     if (total > 0) {
         ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
@@ -178,10 +186,8 @@ function calculate() {
         }
     }
 
-    // Farbe und Text des Ergebnisfelds steuern
     const resDiv = document.getElementById('resultText');
-    resDiv.className = 'output'; // Reset
-    
+    resDiv.className = 'output'; 
     if (isUnstable || isOverweight) {
         resDiv.classList.add('is-warning');
     } else {
@@ -189,13 +195,8 @@ function calculate() {
     }
 
     let resHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stück<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
-    
-    if (isOverweight) {
-        resHTML += `<div class="warning-text">⚠ ÜBERLAST: Max. 180kg erlaubt!</div>`;
-    }
-    if (isUnstable) {
-        resHTML += `<div class="warning-text">⚠ KIPPGEFAHR: Bauteil zu schlank (H > 1.5x Breite). Prüfung erforderlich!</div>`;
-    }
+    if (isOverweight) resHTML += `<div class="warning-text">⚠ ÜBERLAST: Max. 180kg erlaubt!</div>`;
+    if (isUnstable) resHTML += `<div class="warning-text">⚠ KIPPGEFAHR: Bauteil zu schlank (H > 1.5x Breite). Prüfung erforderlich!</div>`;
 
     resDiv.innerHTML = resHTML;
 }
@@ -203,7 +204,7 @@ function calculate() {
 function saveAsImage() {
     const canvas = document.getElementById('layoutCanvas');
     const link = document.createElement('a');
-    link.download = 'Blister-Layout.png';
+    link.download = 'Blister-Berechnung.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
 }
