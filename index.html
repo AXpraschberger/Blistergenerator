@@ -2,28 +2,41 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Bauteil-Planer: Rechteck & Rund</title>
+    <title>Automation Express - Bauteil-Planer</title>
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; color: #333; }
+        :root { --primary: #2c3e50; --accent: #e67e22; } /* Orange für Automation Express */
+        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; }
         .controls { width: 320px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        /* Logo & Header */
+        .header { text-align: center; margin-bottom: 20px; }
+        .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+        h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
+        
+        .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px; font-size: 0.9em; }
         .input-group { margin-bottom: 18px; }
-        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 6px; color: #555; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(52,152,219,0.2); }
+        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
-        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.2s; margin-top: 10px; }
-        button:hover { background: #2980b9; }
-        .output { margin-top: 25px; background: #eef7fd; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
-        canvas { border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: white; align-self: flex-start; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .output { margin-top: 25px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
+        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="controls">
-    <h3>Konfiguration</h3>
+    <div class="header">
+        <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
+        <h2>Automation Express</h2>
+        <p style="font-size: 0.8em; color: #666;">Bauteil-Kalkulator</p>
+    </div>
+
+    <div class="info-box">
+        <strong>Fixierte Fläche:</strong><br>
+        1200 mm x 800 mm
+    </div>
     
     <div class="input-group">
         <label>Form des Bauteils</label>
@@ -33,18 +46,12 @@
         </select>
     </div>
 
-    <div class="input-group">
-        <label>Fläche (Breite x Länge) mm</label>
-        <div class="row">
-            <input type="number" id="areaW" value="600"> x <input type="number" id="areaL" value="400">
-        </div>
-    </div>
-
     <div id="rectInputs">
         <div class="input-group">
             <label>Bauteil (Breite x Länge) mm</label>
             <div class="row">
-                <input type="number" id="partW" value="60"> x <input type="number" id="partL" value="40">
+                <input type="number" id="partW" value="100" oninput="calculateAndDraw()"> x 
+                <input type="number" id="partL" value="80" oninput="calculateAndDraw()">
             </div>
         </div>
     </div>
@@ -52,25 +59,25 @@
     <div id="circleInputs" class="hidden">
         <div class="input-group">
             <label>Durchmesser (mm)</label>
-            <input type="number" id="partD" value="50">
+            <input type="number" id="partD" value="80" oninput="calculateAndDraw()">
         </div>
     </div>
 
     <div class="input-group">
-        <label>Mindest-Abstand (mm)</label>
-        <input type="number" id="gap" value="10">
+        <label>Abstand (mm)</label>
+        <input type="number" id="gap" value="10" oninput="calculateAndDraw()">
     </div>
 
-    <button onclick="calculateAndDraw()">Layout generieren</button>
-
-    <div class="output" id="resultText">
-        Geben Sie Werte ein...
-    </div>
+    <div class="output" id="resultText">Berechne...</div>
 </div>
 
 <canvas id="layoutCanvas"></canvas>
 
 <script>
+// Fixe Werte für die Fläche
+const FIXED_AW = 1200;
+const FIXED_AL = 800;
+
 function toggleInputs() {
     const shape = document.getElementById('shapeType').value;
     document.getElementById('rectInputs').classList.toggle('hidden', shape !== 'rect');
@@ -82,8 +89,6 @@ function calculateAndDraw() {
     const canvas = document.getElementById('layoutCanvas');
     const ctx = canvas.getContext('2d');
     
-    const aw = parseFloat(document.getElementById('areaW').value) || 0;
-    const al = parseFloat(document.getElementById('areaL').value) || 0;
     const gap = parseFloat(document.getElementById('gap').value) || 0;
     const shape = document.getElementById('shapeType').value;
 
@@ -95,35 +100,27 @@ function calculateAndDraw() {
         pw = pl = parseFloat(document.getElementById('partD').value) || 0;
     }
 
-    // Skalierung für die Anzeige (max 800px Breite/Höhe)
-    const padding = 40;
-    const scale = Math.min((window.innerWidth - 450) / aw, (window.innerHeight - 80) / al, 1);
-    canvas.width = aw * scale;
-    canvas.height = al * scale;
+    const scale = Math.min((window.innerWidth - 450) / FIXED_AW, (window.innerHeight - 80) / FIXED_AL);
+    canvas.width = FIXED_AW * scale;
+    canvas.height = FIXED_AL * scale;
 
-    // Berechnung Grid
     const colStep = pw + gap;
     const rowStep = pl + gap;
-    
-    // Wir addieren den Gap einmal virtuell zur Fläche, um den letzten Slot korrekt zu berechnen
-    const cols = Math.floor((aw + gap) / colStep);
-    const rows = Math.floor((al + gap) / rowStep);
+    const cols = Math.floor((FIXED_AW + gap) / colStep);
+    const rows = Math.floor((FIXED_AL + gap) / rowStep);
     const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
-    // Zeichnen vorbereiten
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Bauteile zeichnen
-    ctx.fillStyle = (shape === 'rect') ? "#3498db" : "#e67e22";
-    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
+    ctx.strokeStyle = "rgba(0,0,0,0.1)";
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const x = c * colStep * scale;
             const y = r * rowStep * scale;
-
             if (shape === 'rect') {
                 ctx.fillRect(x, y, pw * scale, pl * scale);
                 ctx.strokeRect(x, y, pw * scale, pl * scale);
@@ -137,16 +134,13 @@ function calculateAndDraw() {
         }
     }
 
-    // Ergebnis-Text
     document.getElementById('resultText').innerHTML = 
-        `<strong>Ergebnis:</strong><br>` +
+        `<strong>Automation Express Ergebnis:</strong><br>` +
         `Raster: ${cols} x ${rows}<br>` +
-        `Gesamtanzahl: <span style="font-size: 1.2em; color: var(--accent);">${total}</span> Bauteile`;
+        `Gesamt: <span style="font-size: 1.3em; color: #e67e22;">${total} Stück</span>`;
 }
 
-// Start
-calculateAndDraw();
+toggleInputs();
 </script>
-
 </body>
 </html>
