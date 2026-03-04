@@ -5,8 +5,8 @@
     <title>Automation Express - Bauteil-Planer Pro</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; }
-        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; max-height: 95vh; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; height: 100vh; box-sizing: border-box; }
+        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; }
         .header { text-align: center; margin-bottom: 20px; }
         .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
         h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
@@ -18,8 +18,8 @@
         .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; }
         .warning { margin: 10px 0; padding: 12px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); line-height: 1.4; }
         .weight-error { color: var(--danger); border-left-color: var(--danger); background: #fdeaea; }
-        .canvas-container { flex-grow: 1; display: flex; justify-content: flex-start; align-items: flex-start; }
-        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
+        canvas { background: white; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -68,7 +68,7 @@
     </div>
 
     <div id="tiltWarning" class="warning hidden">
-        ⚠ ACHTUNG: Das Bauteil ist sehr schlank (Höhe > 1,5x Breite). Es besteht Kippgefahr! Der Fall muss durch Automation Express gesondert geprüft werden.
+        ⚠ ACHTUNG: Das Bauteil ist sehr schlank (Höhe > 1,5x Breite/Ø). Es besteht Kippgefahr! Der Fall muss durch Automation Express gesondert geprüft werden.
     </div>
 
     <div class="input-group">
@@ -123,7 +123,54 @@ function calculate() {
         volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    // Kipp-Prüfung Logik
+    // Kipp-Prüfung
     const minSide = Math.min(pw, pl);
-    const isUnstable = (minSide > 0 && h > (minSide * 1.5));
-    const
+    const warningBox = document.getElementById('tiltWarning');
+    if (minSide > 0 && h > (minSide * 1.5)) {
+        warningBox.classList.remove('hidden');
+    } else {
+        warningBox.classList.add('hidden');
+    }
+
+    // Layout-Berechnung
+    const colStep = pw + gap;
+    const rowStep = pl + gap;
+    const cols = Math.max(0, Math.floor((FIXED_AW + gap) / colStep));
+    const rows = Math.max(0, Math.floor((FIXED_AL + gap) / rowStep));
+    const total = cols * rows;
+
+    // Gewicht
+    const weightPerPart = (volume * density) / 1000;
+    const totalWeight = total * weightPerPart;
+
+    // Canvas Skalierung & Zeichnen
+    const container = document.querySelector('.canvas-container');
+    const scale = Math.min((container.clientWidth - 40) / FIXED_AW, (container.clientHeight - 40) / FIXED_AL, 1);
+    
+    canvas.width = FIXED_AW * scale;
+    canvas.height = FIXED_AL * scale;
+
+    const blockWidth = (cols * colStep) - gap;
+    const blockHeight = (rows * rowStep) - gap;
+    const offsetX = (FIXED_AW - blockWidth) / 2;
+    const offsetY = (FIXED_AL - blockHeight) / 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Hintergrundrahmen (Fläche)
+    ctx.strokeStyle = "#ddd";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
+    ctx.strokeStyle = "rgba(0,0,0,0.1)";
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const x = (offsetX + (c * colStep)) * scale;
+            const y = (offsetY + (r * rowStep)) * scale;
+            if (shape === 'rect') {
+                ctx.fillRect(x, y, pw * scale, pl * scale);
+                ctx.strokeRect(x, y, pw * scale, pl * scale);
+            } else {
+                const r_draw = (pw / 2) * scale;
