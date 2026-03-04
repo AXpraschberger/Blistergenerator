@@ -2,24 +2,29 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Automation Express - Bauteil-Planer Pro</title>
+    <title>Automation Express - Bauteil-Planer</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; height: 100vh; overflow: hidden; }
-        .controls { width: 340px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; z-index: 10; }
-        .header { text-align: center; margin-bottom: 15px; }
-        .logo { max-width: 140px; height: auto; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
-        h2 { color: var(--primary); font-size: 1.3em; margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; height: 100vh; box-sizing: border-box; }
+        
+        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+        h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
+        
         .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
-        .input-group { margin-bottom: 12px; }
-        label { display: block; font-size: 0.8em; font-weight: bold; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
-        .output { margin-top: 15px; padding: 12px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; font-size: 0.9em; min-height: 60px; }
-        .warning { margin: 10px 0; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.8em; font-weight: bold; border: 1px solid var(--danger); line-height: 1.3; }
-        .weight-error { color: var(--danger); border-left-color: var(--danger); background: #fdeaea; }
-        .canvas-container { flex-grow: 1; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; padding: 20px; position: relative; min-width: 300px; }
-        canvas { background: white; border: 1px solid #eee; max-width: 100%; max-height: 100%; }
+        
+        /* Das Ergebnisfeld */
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; line-height: 1.5; }
+        .status-msg { margin-top: 8px; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em; display: block; }
+        .msg-danger { color: var(--danger); background: #fdeaea; border: 1px solid var(--danger); }
+        
+        .canvas-container { flex-grow: 1; display: flex; justify-content: flex-start; align-items: flex-start; }
+        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -29,7 +34,7 @@
     <div class="header">
         <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
         <h2>Automation Express</h2>
-        <p style="font-size: 0.75em; color: #666; margin: 2px 0;">Technischer Kalkulator</p>
+        <p style="font-size: 0.8em; color: #666;">Technischer Kalkulator</p>
     </div>
 
     <div class="info-box">
@@ -64,11 +69,7 @@
 
     <div class="input-group">
         <label>Bauteilhöhe (mm)</label>
-        <input type="number" id="partH" value="50" oninput="calculate()">
-    </div>
-
-    <div id="tiltWarning" class="warning hidden">
-        ⚠ ACHTUNG: Das Bauteil ist sehr schlank (Höhe > 1,5x Breite/Ø). Es besteht Kippgefahr! Der Fall muss durch Automation Express gesondert geprüft werden.
+        <input type="number" id="partH" value="150" oninput="calculate()">
     </div>
 
     <div class="input-group">
@@ -85,10 +86,12 @@
         <input type="number" id="gap" value="12" oninput="calculate()">
     </div>
 
-    <div class="output" id="resultText">Initialisierung...</div>
+    <div class="output" id="resultText">
+        Warte auf Eingabe...
+    </div>
 </div>
 
-<div class="canvas-container" id="cContainer">
+<div class="canvas-container">
     <canvas id="layoutCanvas"></canvas>
 </div>
 
@@ -107,10 +110,7 @@ function toggleInputs() {
 function calculate() {
     const canvas = document.getElementById('layoutCanvas');
     const ctx = canvas.getContext('2d');
-    const container = document.getElementById('cContainer');
     
-    if (!canvas || !container) return;
-
     const gap = parseFloat(document.getElementById('gap').value) || 0;
     const h = parseFloat(document.getElementById('partH').value) || 0;
     const density = parseFloat(document.getElementById('material').value);
@@ -126,10 +126,38 @@ function calculate() {
         volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    // Kipp-Prüfung
+    // Berechnung Layout
+    const colStep = pw + gap;
+    const rowStep = pl + gap;
+    const cols = (colStep > 0) ? Math.floor((FIXED_AW + gap) / colStep) : 0;
+    const rows = (rowStep > 0) ? Math.floor((FIXED_AL + gap) / rowStep) : 0;
+    const total = (cols > 0 && rows > 0) ? cols * rows : 0;
+
+    // Gewicht
+    const weightPerPart = (volume * density) / 1000;
+    const totalWeight = total * weightPerPart;
+
+    // Kipp-Prüfung (Höhe > 1,5x kleinste Seite)
     const minSide = Math.min(pw, pl);
-    const warningBox = document.getElementById('tiltWarning');
-    if (minSide > 0 && h > (minSide * 1.5)) {
-        warningBox.classList.remove('hidden');
-    } else {
-        warningBox.classList.
+    const isUnstable = (minSide > 0 && h > (minSide * 1.5));
+
+    // Grafik Skalierung
+    const scale = Math.min((window.innerWidth - 450) / FIXED_AW, (window.innerHeight - 80) / FIXED_AL);
+    canvas.width = FIXED_AW * scale;
+    canvas.height = FIXED_AL * scale;
+
+    const blockWidth = (cols * colStep) - gap;
+    const blockHeight = (rows * rowStep) - gap;
+    const offsetX = (FIXED_AW - blockWidth) / 2;
+    const offsetY = (FIXED_AL - blockHeight) / 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (total > 0) {
+        ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = (offsetX + (c * colStep)) * scale;
+                const y = (offsetY + (r * rowStep)) * scale;
