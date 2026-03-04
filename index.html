@@ -6,27 +6,20 @@
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; --success: #2ecc71; --warn-bg: #fff3e0; --success-bg: #eafaf1; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; min-height: 100vh; }
-        
         .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; height: fit-content; }
         .header { text-align: center; margin-bottom: 20px; }
         .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
         h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
-        
         .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
         .input-group { margin-bottom: 12px; }
         label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
-        
-        .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; transition: all 0.3s ease; border-left: 5px solid transparent; }
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; border-left: 5px solid transparent; }
         .is-success { border-left-color: var(--success); background: var(--success-bg); }
         .is-warning { border-left-color: var(--accent); background: var(--warn-bg); }
-        
-        .warning-text { margin-top: 10px; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
-        
+        .warning-text { margin-top: 8px; padding: 8px; border-radius: 4px; background: #fdeaea; color: var(--danger); font-size: 0.82em; font-weight: bold; border: 1px solid var(--danger); }
         .save-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .save-btn:hover { background: #34495e; }
-
         .canvas-container { flex-grow: 1; padding: 10px; display: flex; justify-content: flex-start; align-items: flex-start; }
         canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; }
         .hidden { display: none !important; }
@@ -36,45 +29,33 @@
 
 <div class="controls">
     <div class="header">
-        <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
+        <img src="logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
         <h2>Automation Express</h2>
         <p style="font-size: 0.9em; color: #666; font-weight: bold; margin-top: 5px;">Blisterberechnung</p>
     </div>
 
     <div class="info-box">
-        <strong>Vorgaben:</strong><br>
-        Blister: 1200 x 800 mm<br>
-        Nutzfläche: 1000 x 700 mm<br>
-        Max. Last: 180 kg
+        Blister: 1200x800 | Nutzfläche: 1000x700 | Max: 180kg
     </div>
     
-    <div class="input-group">
-        <label>Bauteilform</label>
-        <select id="shapeType" onchange="toggleInputs()">
-            <option value="rect">Rechteckig</option>
-            <option value="circle">Rund (Zylinder)</option>
-        </select>
+    <label>Bauteilform</label>
+    <select id="shapeType" onchange="toggleInputs()">
+        <option value="rect">Rechteckig</option>
+        <option value="circle">Rund (Zylinder)</option>
+    </select>
+
+    <div id="rectInputs" class="input-group">
+        <label>Maße (B x L) mm</label>
+        <div class="row"><input type="number" id="partW" value="100" oninput="calculate()"> x <input type="number" id="partL" value="80" oninput="calculate()"></div>
     </div>
 
-    <div id="rectInputs">
-        <div class="input-group">
-            <label>Maße (B x L) mm</label>
-            <div class="row">
-                <input type="number" id="partW" value="100" oninput="calculate()"> x 
-                <input type="number" id="partL" value="80" oninput="calculate()">
-            </div>
-        </div>
-    </div>
-
-    <div id="circleInputs" class="hidden">
-        <div class="input-group">
-            <label>Durchmesser (mm)</label>
-            <input type="number" id="partD" value="80" oninput="calculate()">
-        </div>
+    <div id="circleInputs" class="input-group hidden">
+        <label>Durchmesser (mm)</label>
+        <input type="number" id="partD" value="80" oninput="calculate()">
     </div>
 
     <div class="input-group">
-        <label>Höhe (mm)</label>
+        <label>Bauteilhöhe (mm)</label>
         <input type="number" id="partH" value="50" oninput="calculate()">
     </div>
 
@@ -89,11 +70,10 @@
 
     <div class="input-group">
         <label>Abstand (min. 15 mm)</label>
-        <input type="number" id="gap" value="15" min="15" oninput="calculate()">
+        <input type="number" id="gap" value="15" oninput="calculate()">
     </div>
 
-    <div id="resultText" class="output">Berechne...</div>
-    
+    <div id="resultText" class="output"></div>
     <button class="save-btn" onclick="saveAsImage()">Ansicht als Bild speichern</button>
 </div>
 
@@ -102,143 +82,43 @@
 </div>
 
 <script>
-const VISUAL_W = 1200; 
-const VISUAL_H = 800;
-const USABLE_W = 1000;
-const USABLE_H = 700;
-const MAX_WEIGHT = 180;
+const VIS_W = 1200, VIS_H = 800, USE_W = 1000, USE_H = 700, MAX_KG = 180;
 
 function toggleInputs() {
-    const shape = document.getElementById('shapeType').value;
-    document.getElementById('rectInputs').classList.toggle('hidden', shape !== 'rect');
-    document.getElementById('circleInputs').classList.toggle('hidden', shape !== 'circle');
+    const s = document.getElementById('shapeType').value;
+    document.getElementById('rectInputs').classList.toggle('hidden', s !== 'rect');
+    document.getElementById('circleInputs').classList.toggle('hidden', s !== 'circle');
     calculate();
 }
 
 function calculate() {
     const canvas = document.getElementById('layoutCanvas');
     const ctx = canvas.getContext('2d');
-    
-    let gap = parseFloat(document.getElementById('gap').value) || 0;
-    if (gap < 15) gap = 15;
-
-    const h = parseFloat(document.getElementById('partH').value) || 0;
-    const matSelect = document.getElementById('material');
-    const density = parseFloat(matSelect.value);
-    const materialName = matSelect.options[matSelect.selectedIndex].text;
     const shape = document.getElementById('shapeType').value;
+    const h = parseFloat(document.getElementById('partH').value) || 0;
+    const dens = parseFloat(document.getElementById('material').value);
+    let gap = parseFloat(document.getElementById('gap').value) || 15;
+    if(gap < 15) gap = 15;
 
-    let pw, pl, volume;
-    if (shape === 'rect') {
+    let pw, pl, vol;
+    if(shape === 'rect') {
         pw = parseFloat(document.getElementById('partW').value) || 0;
         pl = parseFloat(document.getElementById('partL').value) || 0;
-        volume = (pw * pl * h) / 1000; 
+        vol = (pw * pl * h) / 1000;
     } else {
         pw = pl = parseFloat(document.getElementById('partD').value) || 0;
-        volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
+        vol = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    const colStep = pw + gap;
-    const rowStep = pl + gap;
-    const cols = (colStep > 0) ? Math.floor((USABLE_W + gap) / colStep) : 0;
-    const rows = (rowStep > 0) ? Math.floor((USABLE_H + gap) / rowStep) : 0;
-    const total = (cols > 0 && rows > 0) ? cols * rows : 0;
+    const cols = Math.floor((USE_W + gap) / (pw + gap)) || 0;
+    const rows = Math.floor((USE_H + gap) / (pl + gap)) || 0;
+    const total = cols * rows;
+    const totalWeight = (total * vol * dens) / 1000;
 
-    const weightPerPart = (volume * density) / 1000;
-    const totalWeight = total * weightPerPart;
-    const minSide = Math.min(pw, pl);
-    const isUnstable = (minSide > 0 && h > (minSide * 1.5));
-    const isOverweight = (totalWeight > MAX_WEIGHT);
+    const isUnstable = (h > Math.min(pw, pl) * 1.5);
+    const isOver = totalWeight > MAX_KG;
 
-    // Canvas zeichnen
-    const scale = 0.6; 
-    canvas.width = VISUAL_W * scale;
-    canvas.height = VISUAL_H * scale;
-
-    const blockWidth = (cols * colStep) - gap;
-    const blockHeight = (rows * rowStep) - gap;
-    const offsetX = (VISUAL_W - blockWidth) / 2;
-    const offsetY = (VISUAL_H - blockHeight) / 2;
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Nutzzone Rahmen
-    ctx.strokeStyle = "#eee";
-    ctx.strokeRect(((VISUAL_W-USABLE_W)/2)*scale, ((VISUAL_H-USABLE_H)/2)*scale, USABLE_W * scale, USABLE_H * scale);
-
-    if (total > 0) {
-        ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const x = (offsetX + (c * colStep)) * scale;
-                const y = (offsetY + (r * rowStep)) * scale;
-                if (shape === 'rect') {
-                    ctx.fillRect(x, y, pw * scale, pl * scale);
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(x + (pw/2)*scale, y + (pw/2)*scale, (pw/2)*scale, 0, Math.PI*2);
-                    ctx.fill();
-                }
-            }
-        }
-    }
-
-    // UI Feedback
-    const resDiv = document.getElementById('resultText');
-    resDiv.className = 'output ' + ( (isUnstable || isOverweight) ? 'is-warning' : 'is-success' );
-    
-    let resHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stück<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
-    if (isOverweight) resHTML += `<div class="warning-text">⚠ ÜBERLAST: Max. 180kg!</div>`;
-    if (isUnstable) resHTML += `<div class="warning-text">⚠ KIPPGEFAHR!</div>`;
-    resDiv.innerHTML = resHTML;
-
-    // Daten für Bild-Export global speichern
-    window.currentData = {
-        shape, pw, pl, h, gap, materialName, total, totalWeight, isOverweight, isUnstable
-    };
-}
-
-function saveAsImage() {
-    const mainCanvas = document.getElementById('layoutCanvas');
-    const d = window.currentData;
-    
-    // Erstelle einen temporären Canvas für das kombinierte Bild
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    const infoWidth = 300;
-    tempCanvas.width = mainCanvas.width + infoWidth;
-    tempCanvas.height = mainCanvas.height;
-    
-    // Weißer Hintergrund
-    tempCtx.fillStyle = "white";
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    
-    // 1. Layout kopieren
-    tempCtx.drawImage(mainCanvas, 0, 0);
-    
-    // 2. Infoblock zeichnen
-    tempCtx.fillStyle = "#f8f9fa";
-    tempCtx.fillRect(mainCanvas.width, 0, infoWidth, tempCanvas.height);
-    
-    tempCtx.fillStyle = "#2c3e50";
-    tempCtx.font = "bold 16px Arial";
-    tempCtx.fillText("Blisterkonfiguration", mainCanvas.width + 20, 40);
-    
-    tempCtx.font = "14px Arial";
-    let y = 80;
-    tempCtx.fillText("Form: " + (d.shape === 'rect' ? 'Rechteck' : 'Rund'), mainCanvas.width + 20, y); y += 25;
-    tempCtx.fillText(`Maße: ${d.pw} x ${d.pl} mm`, mainCanvas.width + 20, y); y += 25;
-    tempCtx.fillText(`Höhe: ${d.h} mm`, mainCanvas.width + 20, y); y += 25;
-    tempCtx.fillText(`Abstand: ${d.gap} mm`, mainCanvas.width + 20, y); y += 25;
-    tempCtx.fillText(`Material: ${d.materialName}`, mainCanvas.width + 20, y); y += 40;
-    
-    tempCtx.font = "bold 16px Arial";
-    tempCtx.fillText("ERGEBNIS:", mainCanvas.width + 20, y); y += 30;
-    tempCtx.font = "bold 20px Arial";
-    tempCtx.fillStyle = "#e67e22";
-    tempCtx.fillText(`${d.total} Stück`, mainCanvas.width + 20, y); y += 30;
-    tempCtx.font = "16px Arial";
-    tempCtx.fillStyle = "#2c3e50";
-    tempCtx.fillText(`Gesamt: ${d.totalWeight.toFixed(1)} kg`, mainCanvas.width + 20, y); y +=
+    // Zeichnen
+    const sc = 0.5;
+    canvas.width = VIS_W * sc; canvas.height = VIS_H * sc;
+    ctx.fillStyle = "white"; ctx.fillRect
