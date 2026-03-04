@@ -5,21 +5,21 @@
     <title>Automation Express - Bauteil-Planer Pro</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; height: 100vh; box-sizing: border-box; }
-        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
-        h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; height: 100vh; overflow: hidden; }
+        .controls { width: 340px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; }
+        .header { text-align: center; margin-bottom: 15px; }
+        .logo { max-width: 140px; height: auto; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
+        h2 { color: var(--primary); font-size: 1.3em; margin: 0; }
         .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.8em; font-weight: bold; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
         .row { display: flex; gap: 8px; align-items: center; }
-        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; }
-        .warning { margin: 10px 0; padding: 12px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); line-height: 1.4; }
+        .output { margin-top: 15px; padding: 12px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; font-size: 0.9em; }
+        .warning { margin: 10px 0; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.8em; font-weight: bold; border: 1px solid var(--danger); line-height: 1.3; }
         .weight-error { color: var(--danger); border-left-color: var(--danger); background: #fdeaea; }
-        .canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
-        canvas { background: white; }
+        .canvas-container { flex-grow: 1; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; padding: 20px; }
+        canvas { background: white; border: 1px solid #eee; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -29,7 +29,7 @@
     <div class="header">
         <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
         <h2>Automation Express</h2>
-        <p style="font-size: 0.8em; color: #666;">Technischer Kalkulator</p>
+        <p style="font-size: 0.75em; color: #666; margin: 2px 0;">Technischer Kalkulator</p>
     </div>
 
     <div class="info-box">
@@ -64,7 +64,7 @@
 
     <div class="input-group">
         <label>Bauteilhöhe (mm)</label>
-        <input type="number" id="partH" value="150" oninput="calculate()">
+        <input type="number" id="partH" value="50" oninput="calculate()">
     </div>
 
     <div id="tiltWarning" class="warning hidden">
@@ -88,7 +88,7 @@
     <div class="output" id="resultText">Berechne...</div>
 </div>
 
-<div class="canvas-container">
+<div class="canvas-container" id="cContainer">
     <canvas id="layoutCanvas"></canvas>
 </div>
 
@@ -107,6 +107,7 @@ function toggleInputs() {
 function calculate() {
     const canvas = document.getElementById('layoutCanvas');
     const ctx = canvas.getContext('2d');
+    const container = document.getElementById('cContainer');
     
     const gap = parseFloat(document.getElementById('gap').value) || 0;
     const h = parseFloat(document.getElementById('partH').value) || 0;
@@ -132,20 +133,21 @@ function calculate() {
         warningBox.classList.add('hidden');
     }
 
-    // Layout-Berechnung
+    // Layout
     const colStep = pw + gap;
     const rowStep = pl + gap;
-    const cols = Math.max(0, Math.floor((FIXED_AW + gap) / colStep));
-    const rows = Math.max(0, Math.floor((FIXED_AL + gap) / rowStep));
-    const total = cols * rows;
+    const cols = (colStep > 0) ? Math.floor((FIXED_AW + gap) / colStep) : 0;
+    const rows = (rowStep > 0) ? Math.floor((FIXED_AL + gap) / rowStep) : 0;
+    const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
     // Gewicht
     const weightPerPart = (volume * density) / 1000;
     const totalWeight = total * weightPerPart;
 
-    // Canvas Skalierung & Zeichnen
-    const container = document.querySelector('.canvas-container');
-    const scale = Math.min((container.clientWidth - 40) / FIXED_AW, (container.clientHeight - 40) / FIXED_AL, 1);
+    // Skalierung repariert: Verwendet jetzt feste Mindestgröße falls Container noch nicht geladen
+    const cW = container.clientWidth || 800;
+    const cH = container.clientHeight || 600;
+    const scale = Math.min((cW - 40) / FIXED_AW, (cH - 40) / FIXED_AL);
     
     canvas.width = FIXED_AW * scale;
     canvas.height = FIXED_AL * scale;
@@ -157,20 +159,50 @@ function calculate() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Hintergrundrahmen (Fläche)
-    ctx.strokeStyle = "#ddd";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    // Hintergrundfläche zeichnen
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
-    ctx.strokeStyle = "rgba(0,0,0,0.1)";
+    if (total > 0) {
+        ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
+        ctx.strokeStyle = "rgba(0,0,0,0.1)";
 
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const x = (offsetX + (c * colStep)) * scale;
-            const y = (offsetY + (r * rowStep)) * scale;
-            if (shape === 'rect') {
-                ctx.fillRect(x, y, pw * scale, pl * scale);
-                ctx.strokeRect(x, y, pw * scale, pl * scale);
-            } else {
-                const r_draw = (pw / 2) * scale;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = (offsetX + (c * colStep)) * scale;
+                const y = (offsetY + (r * rowStep)) * scale;
+                if (shape === 'rect') {
+                    ctx.fillRect(x, y, pw * scale, pl * scale);
+                    ctx.strokeRect(x, y, pw * scale, pl * scale);
+                } else {
+                    const r_draw = (pw / 2) * scale;
+                    ctx.beginPath();
+                    ctx.arc(x + r_draw, y + r_draw, r_draw, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    const resDiv = document.getElementById('resultText');
+    resDiv.className = 'output' + (totalWeight > MAX_WEIGHT ? ' weight-error' : '');
+    resDiv.innerHTML = `
+        <strong>Ergebnis:</strong><br>
+        Anzahl: ${total} Stück (${cols}x${rows})<br>
+        Gewicht/Teil: ${weightPerPart.toFixed(2)} kg<br>
+        <strong>Gesamtgewicht: ${totalWeight.toFixed(1)} kg</strong>
+        ${totalWeight > MAX_WEIGHT ? '<br><span style="color:var(--danger)">⚠ ÜBERLAST (Max 180kg!)</span>' : ''}
+    `;
+}
+
+// Sofort beim Laden ausführen
+window.onload = function() {
+    toggleInputs();
+    setTimeout(calculate, 100); // Sicherheits-Delay für Rendering
+};
+window.onresize = calculate;
+</script>
+
+</body>
+</html>
