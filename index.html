@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Automation Express - Bauteil-Planer</title>
+    <title>Automation Express - Blisterberechnung</title>
     <style>
-        :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; }
+        :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; --success: #2ecc71; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; min-height: 100vh; }
         
         .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; height: fit-content; }
@@ -18,9 +18,16 @@
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
         
-        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; line-height: 1.6; }
+        /* Ergebnisfeld - Standardmäßig Grün */
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--success); background: #eafaf1; line-height: 1.6; transition: all 0.3s ease; }
+        /* Wenn Warnungen vorliegen - Orange/Gelb */
+        .output.has-warning { border-left-color: var(--accent); background: #fff3e0; }
+        
         .warning-box { margin-top: 10px; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
         
+        .save-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .save-btn:hover { background: #34495e; }
+
         .canvas-container { flex-grow: 1; padding: 10px; display: flex; justify-content: flex-start; align-items: flex-start; }
         canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; }
         .hidden { display: none !important; }
@@ -32,7 +39,7 @@
     <div class="header">
         <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
         <h2>Automation Express</h2>
-        <p style="font-size: 0.8em; color: #666;">Technischer Kalkulator</p>
+        <p style="font-size: 0.9em; color: #666; font-weight: bold; margin-top: 5px;">Blisterberechnung</p>
     </div>
 
     <div class="info-box">
@@ -66,7 +73,7 @@
 
     <div class="input-group">
         <label>Höhe (mm)</label>
-        <input type="number" id="partH" value="150" oninput="calculate()">
+        <input type="number" id="partH" value="50" oninput="calculate()">
     </div>
 
     <div class="input-group">
@@ -84,6 +91,8 @@
     </div>
 
     <div class="output" id="resultText">Berechne...</div>
+    
+    <button class="save-btn" onclick="saveAsImage()">Ansicht als Bild speichern</button>
 </div>
 
 <div class="canvas-container">
@@ -121,21 +130,19 @@ function calculate() {
         volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    // Raster-Logik
     const colStep = pw + gap;
     const rowStep = pl + gap;
     const cols = (colStep > 0) ? Math.floor((FIXED_AW + gap) / colStep) : 0;
     const rows = (rowStep > 0) ? Math.floor((FIXED_AL + gap) / rowStep) : 0;
     const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
-    // Gewicht & Kippen
     const weightPerPart = (volume * density) / 1000;
     const totalWeight = total * weightPerPart;
     const minSide = Math.min(pw, pl);
     const isUnstable = (minSide > 0 && h > (minSide * 1.5));
 
-    // Grafik zeichnen (mit fixer Skalierung für Stabilität)
-    const scale = 0.6; // Fester Faktor, damit es immer angezeigt wird
+    // Grafik zeichnen
+    const scale = 0.6; 
     canvas.width = FIXED_AW * scale;
     canvas.height = FIXED_AL * scale;
 
@@ -164,7 +171,16 @@ function calculate() {
         }
     }
 
-    // Ergebnisfeld mit Warnungen
+    // Ergebnisfeld Logik
+    const resDiv = document.getElementById('resultText');
+    let hasWarning = (totalWeight > MAX_WEIGHT || isUnstable);
+    
+    if (hasWarning) {
+        resDiv.classList.add('has-warning');
+    } else {
+        resDiv.classList.remove('has-warning');
+    }
+
     let resHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stück<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
     
     if (totalWeight > MAX_WEIGHT) {
@@ -174,7 +190,15 @@ function calculate() {
         resHTML += `<div class="warning-box">⚠ KIPPGEFAHR: Bauteil zu schlank (H > 1.5x Breite). Prüfung erforderlich!</div>`;
     }
 
-    document.getElementById('resultText').innerHTML = resHTML;
+    resDiv.innerHTML = resHTML;
+}
+
+function saveAsImage() {
+    const canvas = document.getElementById('layoutCanvas');
+    const link = document.createElement('a');
+    link.download = 'Automation-Express-Blister-Layout.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
 }
 
 window.onload = toggleInputs;
