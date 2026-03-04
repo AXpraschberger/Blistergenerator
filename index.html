@@ -1,5 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Automation Express - Bauteil-Planer</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e67e22; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; }
+        .controls { width: 320px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+        h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
+        .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px; font-size: 0.9em; }
+        .input-group { margin-bottom: 18px; }
+        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .row { display: flex; gap: 8px; align-items: center; }
+        .output { margin-top: 25px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
+        .canvas-container { flex-grow: 1; display: flex; justify-content: flex-start; align-items: flex-start; }
+        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div class="header">
+        <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
+        <h2>Automation Express</h2>
+        <p style="font-size: 0.8em; color: #666;">Bauteil-Kalkulator</p>
+    </div>
+
+    <div class="info-box">
+        <strong>Fixierte Fläche:</strong><br>
+        1200 mm x 800 mm
+    </div>
+    
+    <div class="input-group">
+        <label>Form des Bauteils</label>
+        <select id="shapeType" onchange="toggleInputs()">
+            <option value="rect">Rechteckig</option>
+            <option value="circle">Rund (Zylinder)</option>
+        </select>
+    </div>
+
+    <div id="rectInputs">
+        <div class="input-group">
+            <label>Bauteil (Breite x Länge) mm</label>
+            <div class="row">
+                <input type="number" id="partW" value="100" oninput="calculateAndDraw()"> x 
+                <input type="number" id="partL" value="80" oninput="calculateAndDraw()">
+            </div>
+        </div>
+    </div>
+
+    <div id="circleInputs" class="hidden">
+        <div class="input-group">
+            <label>Durchmesser (mm)</label>
+            <input type="number" id="partD" value="80" oninput="calculateAndDraw()">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Abstand (mm)</label>
+        <input type="number" id="gap" value="12" oninput="calculateAndDraw()">
+    </div>
+
+    <div class="output" id="resultText">Berechne...</div>
+</div>
+
+<div class="canvas-container">
+    <canvas id="layoutCanvas"></canvas>
+</div>
+
 <script>
-// Fixe Werte für die Fläche
 const FIXED_AW = 1200;
 const FIXED_AL = 800;
 
@@ -12,6 +85,7 @@ function toggleInputs() {
 
 function calculateAndDraw() {
     const canvas = document.getElementById('layoutCanvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
     const gap = parseFloat(document.getElementById('gap').value) || 0;
@@ -25,45 +99,38 @@ function calculateAndDraw() {
         pw = pl = parseFloat(document.getElementById('partD').value) || 0;
     }
 
-    // Skalierung für die Anzeige
-    const scale = Math.min((window.innerWidth - 450) / FIXED_AW, (window.innerHeight - 80) / FIXED_AL);
+    // Skalierung berechnen
+    const availableWidth = window.innerWidth - 450;
+    const availableHeight = window.innerHeight - 80;
+    const scale = Math.min(availableWidth / FIXED_AW, availableHeight / FIXED_AL, 1);
+    
     canvas.width = FIXED_AW * scale;
     canvas.height = FIXED_AL * scale;
 
     const colStep = pw + gap;
     const rowStep = pl + gap;
     
-    // Anzahl berechnen
     const cols = Math.floor((FIXED_AW + gap) / colStep);
     const rows = Math.floor((FIXED_AL + gap) / rowStep);
     const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
-    // --- NEU: Zentrierung berechnen ---
-    // Wir berechnen die Breite/Höhe des gesamten Bauteil-Blocks
+    // Zentrierung
     const blockWidth = (cols * colStep) - gap;
     const blockHeight = (rows * rowStep) - gap;
-
-    // Der Offset ist die Hälfte des verbleibenden Platzes
     const offsetX = (FIXED_AW - blockWidth) / 2;
     const offsetY = (FIXED_AL - blockHeight) / 2;
-    // ----------------------------------
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Hintergrund (die 1200x800 Fläche)
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Bauteile zeichnen
     ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
     ctx.strokeStyle = "rgba(0,0,0,0.1)";
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            // offsetX/Y werden hier zur Position hinzugefügt
             const x = (offsetX + (c * colStep)) * scale;
             const y = (offsetY + (r * rowStep)) * scale;
-
             if (shape === 'rect') {
                 ctx.fillRect(x, y, pw * scale, pl * scale);
                 ctx.strokeRect(x, y, pw * scale, pl * scale);
@@ -83,5 +150,13 @@ function calculateAndDraw() {
         `Gesamt: <span style="font-size: 1.3em; color: #e67e22;">${total} Stück</span>`;
 }
 
-toggleInputs();
+// Initialisierung
+window.onload = function() {
+    toggleInputs();
+};
+// Update bei Fenstergrößenänderung
+window.onresize = calculateAndDraw;
 </script>
+
+</body>
+</html>
