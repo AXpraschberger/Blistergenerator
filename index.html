@@ -5,26 +5,24 @@
     <title>Automation Express - Bauteil-Planer</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; height: 100vh; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; min-height: 100vh; }
         
-        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; }
+        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; height: fit-content; }
         .header { text-align: center; margin-bottom: 20px; }
         .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
         h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
         
         .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
-        .input-group { margin-bottom: 15px; }
+        .input-group { margin-bottom: 12px; }
         label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
         
-        /* Das Ergebnisfeld */
-        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; line-height: 1.5; }
-        .status-msg { margin-top: 8px; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em; display: block; }
-        .msg-danger { color: var(--danger); background: #fdeaea; border: 1px solid var(--danger); }
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; line-height: 1.6; }
+        .warning-box { margin-top: 10px; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
         
-        .canvas-container { flex-grow: 1; display: flex; justify-content: flex-start; align-items: flex-start; }
-        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .canvas-container { flex-grow: 1; padding: 10px; display: flex; justify-content: flex-start; align-items: flex-start; }
+        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -38,12 +36,11 @@
     </div>
 
     <div class="info-box">
-        <strong>Vorgaben:</strong><br>
-        Fläche: 1200 x 800 mm | Max. Last: 180 kg
+        <strong>Vorgaben:</strong> Fläche 1200x800mm | Max. 180kg
     </div>
     
     <div class="input-group">
-        <label>Form des Bauteils</label>
+        <label>Bauteilform</label>
         <select id="shapeType" onchange="toggleInputs()">
             <option value="rect">Rechteckig</option>
             <option value="circle">Rund (Zylinder)</option>
@@ -52,7 +49,7 @@
 
     <div id="rectInputs">
         <div class="input-group">
-            <label>Grundfläche (B x L) mm</label>
+            <label>Maße (B x L) mm</label>
             <div class="row">
                 <input type="number" id="partW" value="100" oninput="calculate()"> x 
                 <input type="number" id="partL" value="80" oninput="calculate()">
@@ -68,12 +65,12 @@
     </div>
 
     <div class="input-group">
-        <label>Bauteilhöhe (mm)</label>
+        <label>Höhe (mm)</label>
         <input type="number" id="partH" value="150" oninput="calculate()">
     </div>
 
     <div class="input-group">
-        <label>Material / Dichte</label>
+        <label>Material</label>
         <select id="material" onchange="calculate()">
             <option value="7.85">Stahl (7.85 g/cm³)</option>
             <option value="2.7">Aluminium (2.7 g/cm³)</option>
@@ -82,13 +79,11 @@
     </div>
 
     <div class="input-group">
-        <label>Abstand zwischen Bauteilen (mm)</label>
+        <label>Abstand (mm)</label>
         <input type="number" id="gap" value="12" oninput="calculate()">
     </div>
 
-    <div class="output" id="resultText">
-        Warte auf Eingabe...
-    </div>
+    <div class="output" id="resultText">Berechne...</div>
 </div>
 
 <div class="canvas-container">
@@ -126,23 +121,21 @@ function calculate() {
         volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    // Berechnung Layout
+    // Raster-Logik
     const colStep = pw + gap;
     const rowStep = pl + gap;
     const cols = (colStep > 0) ? Math.floor((FIXED_AW + gap) / colStep) : 0;
     const rows = (rowStep > 0) ? Math.floor((FIXED_AL + gap) / rowStep) : 0;
     const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
-    // Gewicht
+    // Gewicht & Kippen
     const weightPerPart = (volume * density) / 1000;
     const totalWeight = total * weightPerPart;
-
-    // Kipp-Prüfung (Höhe > 1,5x kleinste Seite)
     const minSide = Math.min(pw, pl);
     const isUnstable = (minSide > 0 && h > (minSide * 1.5));
 
-    // Grafik Skalierung
-    const scale = Math.min((window.innerWidth - 450) / FIXED_AW, (window.innerHeight - 80) / FIXED_AL);
+    // Grafik zeichnen (mit fixer Skalierung für Stabilität)
+    const scale = 0.6; // Fester Faktor, damit es immer angezeigt wird
     canvas.width = FIXED_AW * scale;
     canvas.height = FIXED_AL * scale;
 
@@ -151,7 +144,6 @@ function calculate() {
     const offsetX = (FIXED_AW - blockWidth) / 2;
     const offsetY = (FIXED_AL - blockHeight) / 2;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -161,3 +153,31 @@ function calculate() {
             for (let c = 0; c < cols; c++) {
                 const x = (offsetX + (c * colStep)) * scale;
                 const y = (offsetY + (r * rowStep)) * scale;
+                if (shape === 'rect') {
+                    ctx.fillRect(x, y, pw * scale, pl * scale);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(x + (pw/2)*scale, y + (pw/2)*scale, (pw/2)*scale, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    // Ergebnisfeld mit Warnungen
+    let resHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stück<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
+    
+    if (totalWeight > MAX_WEIGHT) {
+        resHTML += `<div class="warning-box">⚠ ÜBERLAST: Max. 180kg erlaubt!</div>`;
+    }
+    if (isUnstable) {
+        resHTML += `<div class="warning-box">⚠ KIPPGEFAHR: Bauteil zu schlank (H > 1.5x Breite). Prüfung erforderlich!</div>`;
+    }
+
+    document.getElementById('resultText').innerHTML = resHTML;
+}
+
+window.onload = toggleInputs;
+</script>
+</body>
+</html>
