@@ -102,9 +102,9 @@
 </div>
 
 <script>
-const VISUAL_W = 1200; // Gesamte Blistergröße
+const VISUAL_W = 1200; 
 const VISUAL_H = 800;
-const USABLE_W = 1000; // Tatsächlich nutzbare Fläche
+const USABLE_W = 1000;
 const USABLE_H = 700;
 const MAX_WEIGHT = 180;
 
@@ -119,13 +119,13 @@ function calculate() {
     const canvas = document.getElementById('layoutCanvas');
     const ctx = canvas.getContext('2d');
     
-    // Abstand validieren (Minimum 15)
-    let gapInput = document.getElementById('gap');
-    let gap = parseFloat(gapInput.value) || 0;
+    let gap = parseFloat(document.getElementById('gap').value) || 0;
     if (gap < 15) gap = 15;
 
     const h = parseFloat(document.getElementById('partH').value) || 0;
-    const density = parseFloat(document.getElementById('material').value);
+    const matSelect = document.getElementById('material');
+    const density = parseFloat(matSelect.value);
+    const materialName = matSelect.options[matSelect.selectedIndex].text;
     const shape = document.getElementById('shapeType').value;
 
     let pw, pl, volume;
@@ -138,7 +138,6 @@ function calculate() {
         volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    // Raster-Berechnung auf USABLE_W / USABLE_H
     const colStep = pw + gap;
     const rowStep = pl + gap;
     const cols = (colStep > 0) ? Math.floor((USABLE_W + gap) / colStep) : 0;
@@ -151,12 +150,11 @@ function calculate() {
     const isUnstable = (minSide > 0 && h > (minSide * 1.5));
     const isOverweight = (totalWeight > MAX_WEIGHT);
 
-    // Grafik zeichnen (Skalierung auf VISUAL_W)
+    // Canvas zeichnen
     const scale = 0.6; 
     canvas.width = VISUAL_W * scale;
     canvas.height = VISUAL_H * scale;
 
-    // Zentrierung der Bauteil-Gruppe innerhalb der VISUAL_W Fläche
     const blockWidth = (cols * colStep) - gap;
     const blockHeight = (rows * rowStep) - gap;
     const offsetX = (VISUAL_W - blockWidth) / 2;
@@ -165,7 +163,7 @@ function calculate() {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Zeichne graue Begrenzung der Nutzzone (optional zur Kontrolle)
+    // Nutzzone Rahmen
     ctx.strokeStyle = "#eee";
     ctx.strokeRect(((VISUAL_W-USABLE_W)/2)*scale, ((VISUAL_H-USABLE_H)/2)*scale, USABLE_W * scale, USABLE_H * scale);
 
@@ -186,30 +184,61 @@ function calculate() {
         }
     }
 
+    // UI Feedback
     const resDiv = document.getElementById('resultText');
-    resDiv.className = 'output'; 
-    if (isUnstable || isOverweight) {
-        resDiv.classList.add('is-warning');
-    } else {
-        resDiv.classList.add('is-success');
-    }
-
+    resDiv.className = 'output ' + ( (isUnstable || isOverweight) ? 'is-warning' : 'is-success' );
+    
     let resHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stück<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
-    if (isOverweight) resHTML += `<div class="warning-text">⚠ ÜBERLAST: Max. 180kg erlaubt!</div>`;
-    if (isUnstable) resHTML += `<div class="warning-text">⚠ KIPPGEFAHR: Bauteil zu schlank (H > 1.5x Breite). Prüfung erforderlich!</div>`;
-
+    if (isOverweight) resHTML += `<div class="warning-text">⚠ ÜBERLAST: Max. 180kg!</div>`;
+    if (isUnstable) resHTML += `<div class="warning-text">⚠ KIPPGEFAHR!</div>`;
     resDiv.innerHTML = resHTML;
+
+    // Daten für Bild-Export global speichern
+    window.currentData = {
+        shape, pw, pl, h, gap, materialName, total, totalWeight, isOverweight, isUnstable
+    };
 }
 
 function saveAsImage() {
-    const canvas = document.getElementById('layoutCanvas');
-    const link = document.createElement('a');
-    link.download = 'Blister-Berechnung.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-}
-
-window.onload = toggleInputs;
-</script>
-</body>
-</html>
+    const mainCanvas = document.getElementById('layoutCanvas');
+    const d = window.currentData;
+    
+    // Erstelle einen temporären Canvas für das kombinierte Bild
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    const infoWidth = 300;
+    tempCanvas.width = mainCanvas.width + infoWidth;
+    tempCanvas.height = mainCanvas.height;
+    
+    // Weißer Hintergrund
+    tempCtx.fillStyle = "white";
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // 1. Layout kopieren
+    tempCtx.drawImage(mainCanvas, 0, 0);
+    
+    // 2. Infoblock zeichnen
+    tempCtx.fillStyle = "#f8f9fa";
+    tempCtx.fillRect(mainCanvas.width, 0, infoWidth, tempCanvas.height);
+    
+    tempCtx.fillStyle = "#2c3e50";
+    tempCtx.font = "bold 16px Arial";
+    tempCtx.fillText("Blisterkonfiguration", mainCanvas.width + 20, 40);
+    
+    tempCtx.font = "14px Arial";
+    let y = 80;
+    tempCtx.fillText("Form: " + (d.shape === 'rect' ? 'Rechteck' : 'Rund'), mainCanvas.width + 20, y); y += 25;
+    tempCtx.fillText(`Maße: ${d.pw} x ${d.pl} mm`, mainCanvas.width + 20, y); y += 25;
+    tempCtx.fillText(`Höhe: ${d.h} mm`, mainCanvas.width + 20, y); y += 25;
+    tempCtx.fillText(`Abstand: ${d.gap} mm`, mainCanvas.width + 20, y); y += 25;
+    tempCtx.fillText(`Material: ${d.materialName}`, mainCanvas.width + 20, y); y += 40;
+    
+    tempCtx.font = "bold 16px Arial";
+    tempCtx.fillText("ERGEBNIS:", mainCanvas.width + 20, y); y += 30;
+    tempCtx.font = "bold 20px Arial";
+    tempCtx.fillStyle = "#e67e22";
+    tempCtx.fillText(`${d.total} Stück`, mainCanvas.width + 20, y); y += 30;
+    tempCtx.font = "16px Arial";
+    tempCtx.fillStyle = "#2c3e50";
+    tempCtx.fillText(`Gesamt: ${d.totalWeight.toFixed(1)} kg`, mainCanvas.width + 20, y); y +=
