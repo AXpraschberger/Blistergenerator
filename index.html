@@ -2,22 +2,24 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Automation Express - Bauteil-Planer</title>
+    <title>Automation Express - Bauteil-Planer Pro</title>
     <style>
-        :root { --primary: #2c3e50; --accent: #e67e22; }
+        :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; margin: 0; }
-        .controls { width: 320px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; overflow-y: auto; max-height: 90vh; }
         .header { text-align: center; margin-bottom: 20px; }
         .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
         h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
-        .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px; font-size: 0.9em; }
-        .input-group { margin-bottom: 18px; }
-        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 6px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
-        .output { margin-top: 25px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); background: #fff3e0; }
+        .warning { margin-top: 10px; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
+        .weight-error { color: var(--danger); border-left-color: var(--danger); background: #fdeaea; }
         .canvas-container { flex-grow: 1; display: flex; justify-content: flex-start; align-items: flex-start; }
-        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; }
+        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .hidden { display: none; }
     </style>
 </head>
@@ -27,12 +29,12 @@
     <div class="header">
         <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
         <h2>Automation Express</h2>
-        <p style="font-size: 0.8em; color: #666;">Bauteil-Kalkulator</p>
+        <p style="font-size: 0.8em; color: #666;">Technischer Kalkulator</p>
     </div>
 
     <div class="info-box">
-        <strong>Fixierte Fläche:</strong><br>
-        1200 mm x 800 mm
+        <strong>Vorgaben:</strong><br>
+        Fläche: 1200 x 800 mm | Max. Last: 180 kg
     </div>
     
     <div class="input-group">
@@ -45,10 +47,10 @@
 
     <div id="rectInputs">
         <div class="input-group">
-            <label>Bauteil (Breite x Länge) mm</label>
+            <label>Grundfläche (B x L) mm</label>
             <div class="row">
-                <input type="number" id="partW" value="100" oninput="calculateAndDraw()"> x 
-                <input type="number" id="partL" value="80" oninput="calculateAndDraw()">
+                <input type="number" id="partW" value="100" oninput="calculate()"> x 
+                <input type="number" id="partL" value="80" oninput="calculate()">
             </div>
         </div>
     </div>
@@ -56,13 +58,31 @@
     <div id="circleInputs" class="hidden">
         <div class="input-group">
             <label>Durchmesser (mm)</label>
-            <input type="number" id="partD" value="80" oninput="calculateAndDraw()">
+            <input type="number" id="partD" value="80" oninput="calculate()">
         </div>
     </div>
 
     <div class="input-group">
+        <label>Bauteilhöhe (mm)</label>
+        <input type="number" id="partH" value="50" oninput="calculate()">
+    </div>
+
+    <div class="input-group">
+        <label>Material / Dichte</label>
+        <select id="material" onchange="calculate()">
+            <option value="7.85">Stahl (7.85 g/cm³)</option>
+            <option value="2.7">Aluminium (2.7 g/cm³)</option>
+            <option value="1.41">Kunststoff POM (1.41 g/cm³)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
         <label>Abstand (mm)</label>
-        <input type="number" id="gap" value="12" oninput="calculateAndDraw()">
+        <input type="number" id="gap" value="12" oninput="calculate()">
+    </div>
+
+    <div id="tiltWarning" class="warning hidden">
+        ⚠ ACHTUNG: Bauteile können kippen! Fall muss durch Automation Express geprüft werden.
     </div>
 
     <div class="output" id="resultText">Berechne...</div>
@@ -75,46 +95,55 @@
 <script>
 const FIXED_AW = 1200;
 const FIXED_AL = 800;
+const MAX_WEIGHT = 180;
 
 function toggleInputs() {
     const shape = document.getElementById('shapeType').value;
     document.getElementById('rectInputs').classList.toggle('hidden', shape !== 'rect');
     document.getElementById('circleInputs').classList.toggle('hidden', shape !== 'circle');
-    calculateAndDraw();
+    calculate();
 }
 
-function calculateAndDraw() {
+function calculate() {
     const canvas = document.getElementById('layoutCanvas');
-    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
     const gap = parseFloat(document.getElementById('gap').value) || 0;
+    const h = parseFloat(document.getElementById('partH').value) || 0;
+    const density = parseFloat(document.getElementById('material').value);
     const shape = document.getElementById('shapeType').value;
 
-    let pw, pl;
+    let pw, pl, volume;
     if (shape === 'rect') {
         pw = parseFloat(document.getElementById('partW').value) || 0;
         pl = parseFloat(document.getElementById('partL').value) || 0;
+        volume = (pw * pl * h) / 1000; // in cm³
     } else {
         pw = pl = parseFloat(document.getElementById('partD').value) || 0;
+        volume = (Math.PI * Math.pow(pw/2, 2) * h) / 1000; // in cm³
     }
 
-    // Skalierung berechnen
-    const availableWidth = window.innerWidth - 450;
-    const availableHeight = window.innerHeight - 80;
-    const scale = Math.min(availableWidth / FIXED_AW, availableHeight / FIXED_AL, 1);
-    
-    canvas.width = FIXED_AW * scale;
-    canvas.height = FIXED_AL * scale;
+    // Kipp-Prüfung (Höhe > 1.5x kleinste Seite/Durchmesser)
+    const minSide = Math.min(pw, pl);
+    const isUnstable = h > (minSide * 1.5);
+    document.getElementById('tiltWarning').classList.toggle('hidden', !isUnstable || total === 0);
 
+    // Layout Berechnung
     const colStep = pw + gap;
     const rowStep = pl + gap;
-    
     const cols = Math.floor((FIXED_AW + gap) / colStep);
     const rows = Math.floor((FIXED_AL + gap) / rowStep);
     const total = (cols > 0 && rows > 0) ? cols * rows : 0;
 
-    // Zentrierung
+    // Gewichtsberechnung (Dichte g/cm³ * cm³ = g -> / 1000 = kg)
+    const weightPerPart = (volume * density) / 1000;
+    const totalWeight = total * weightPerPart;
+
+    // Zeichnen
+    const scale = Math.min((window.innerWidth - 450) / FIXED_AW, (window.innerHeight - 80) / FIXED_AL, 1);
+    canvas.width = FIXED_AW * scale;
+    canvas.height = FIXED_AL * scale;
+    
     const blockWidth = (cols * colStep) - gap;
     const blockHeight = (rows * rowStep) - gap;
     const offsetX = (FIXED_AW - blockWidth) / 2;
@@ -123,9 +152,7 @@ function calculateAndDraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
-    ctx.strokeStyle = "rgba(0,0,0,0.1)";
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -133,29 +160,29 @@ function calculateAndDraw() {
             const y = (offsetY + (r * rowStep)) * scale;
             if (shape === 'rect') {
                 ctx.fillRect(x, y, pw * scale, pl * scale);
-                ctx.strokeRect(x, y, pw * scale, pl * scale);
             } else {
-                const radius = (pw / 2) * scale;
                 ctx.beginPath();
-                ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+                ctx.arc(x + (pw/2)*scale, y + (pw/2)*scale, (pw/2)*scale, 0, Math.PI*2);
                 ctx.fill();
-                ctx.stroke();
             }
         }
     }
 
-    document.getElementById('resultText').innerHTML = 
-        `<strong>Automation Express Ergebnis:</strong><br>` +
-        `Raster: ${cols} x ${rows}<br>` +
-        `Gesamt: <span style="font-size: 1.3em; color: #e67e22;">${total} Stück</span>`;
+    // Ergebnistext & Validierung
+    const outputDiv = document.getElementById('resultText');
+    outputDiv.classList.toggle('weight-error', totalWeight > MAX_WEIGHT);
+    
+    outputDiv.innerHTML = `
+        <strong>Ergebnis:</strong><br>
+        Anzahl: ${total} Stück (${cols}x${rows})<br>
+        Gewicht/Teil: ${weightPerPart.toFixed(2)} kg<br>
+        <strong>Gesamtgewicht: ${totalWeight.toFixed(1)} kg</strong>
+        ${totalWeight > MAX_WEIGHT ? '<br>⚠ ÜBERLAST (Max 180kg!)' : ''}
+    `;
 }
 
-// Initialisierung
-window.onload = function() {
-    toggleInputs();
-};
-// Update bei Fenstergrößenänderung
-window.onresize = calculateAndDraw;
+window.onload = toggleInputs;
+window.onresize = calculate;
 </script>
 
 </body>
