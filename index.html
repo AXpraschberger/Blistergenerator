@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Bauteil-Planer: Rechteck & Rund</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; gap: 30px; padding: 30px; background: #f0f2f5; color: #333; }
+        .controls { width: 320px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .input-group { margin-bottom: 18px; }
+        label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 6px; color: #555; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(52,152,219,0.2); }
+        .row { display: flex; gap: 8px; align-items: center; }
+        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.2s; margin-top: 10px; }
+        button:hover { background: #2980b9; }
+        .output { margin-top: 25px; background: #eef7fd; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
+        canvas { border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: white; align-self: flex-start; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h3>Konfiguration</h3>
+    
+    <div class="input-group">
+        <label>Form des Bauteils</label>
+        <select id="shapeType" onchange="toggleInputs()">
+            <option value="rect">Rechteckig</option>
+            <option value="circle">Rund (Zylinder)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Fläche (Breite x Länge) mm</label>
+        <div class="row">
+            <input type="number" id="areaW" value="600"> x <input type="number" id="areaL" value="400">
+        </div>
+    </div>
+
+    <div id="rectInputs">
+        <div class="input-group">
+            <label>Bauteil (Breite x Länge) mm</label>
+            <div class="row">
+                <input type="number" id="partW" value="60"> x <input type="number" id="partL" value="40">
+            </div>
+        </div>
+    </div>
+
+    <div id="circleInputs" class="hidden">
+        <div class="input-group">
+            <label>Durchmesser (mm)</label>
+            <input type="number" id="partD" value="50">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Mindest-Abstand (mm)</label>
+        <input type="number" id="gap" value="10">
+    </div>
+
+    <button onclick="calculateAndDraw()">Layout generieren</button>
+
+    <div class="output" id="resultText">
+        Geben Sie Werte ein...
+    </div>
+</div>
+
+<canvas id="layoutCanvas"></canvas>
+
+<script>
+function toggleInputs() {
+    const shape = document.getElementById('shapeType').value;
+    document.getElementById('rectInputs').classList.toggle('hidden', shape !== 'rect');
+    document.getElementById('circleInputs').classList.toggle('hidden', shape !== 'circle');
+    calculateAndDraw();
+}
+
+function calculateAndDraw() {
+    const canvas = document.getElementById('layoutCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const aw = parseFloat(document.getElementById('areaW').value) || 0;
+    const al = parseFloat(document.getElementById('areaL').value) || 0;
+    const gap = parseFloat(document.getElementById('gap').value) || 0;
+    const shape = document.getElementById('shapeType').value;
+
+    let pw, pl;
+    if (shape === 'rect') {
+        pw = parseFloat(document.getElementById('partW').value) || 0;
+        pl = parseFloat(document.getElementById('partL').value) || 0;
+    } else {
+        pw = pl = parseFloat(document.getElementById('partD').value) || 0;
+    }
+
+    // Skalierung für die Anzeige (max 800px Breite/Höhe)
+    const padding = 40;
+    const scale = Math.min((window.innerWidth - 450) / aw, (window.innerHeight - 80) / al, 1);
+    canvas.width = aw * scale;
+    canvas.height = al * scale;
+
+    // Berechnung Grid
+    const colStep = pw + gap;
+    const rowStep = pl + gap;
+    
+    // Wir addieren den Gap einmal virtuell zur Fläche, um den letzten Slot korrekt zu berechnen
+    const cols = Math.floor((aw + gap) / colStep);
+    const rows = Math.floor((al + gap) / rowStep);
+    const total = (cols > 0 && rows > 0) ? cols * rows : 0;
+
+    // Zeichnen vorbereiten
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Bauteile zeichnen
+    ctx.fillStyle = (shape === 'rect') ? "#3498db" : "#e67e22";
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const x = c * colStep * scale;
+            const y = r * rowStep * scale;
+
+            if (shape === 'rect') {
+                ctx.fillRect(x, y, pw * scale, pl * scale);
+                ctx.strokeRect(x, y, pw * scale, pl * scale);
+            } else {
+                const radius = (pw / 2) * scale;
+                ctx.beginPath();
+                ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+    }
+
+    // Ergebnis-Text
+    document.getElementById('resultText').innerHTML = 
+        `<strong>Ergebnis:</strong><br>` +
+        `Raster: ${cols} x ${rows}<br>` +
+        `Gesamtanzahl: <span style="font-size: 1.2em; color: var(--accent);">${total}</span> Bauteile`;
+}
+
+// Start
+calculateAndDraw();
+</script>
+
+</body>
+</html>
