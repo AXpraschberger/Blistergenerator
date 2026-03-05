@@ -6,29 +6,22 @@
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; --success: #2ecc71; --warn-bg: #fff3e0; --success-bg: #eafaf1; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; min-height: 100vh; }
-        
         .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; height: fit-content; }
         .header { text-align: center; margin-bottom: 20px; }
         .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
         h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
-        
         .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
         .input-group { margin-bottom: 12px; }
         label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .row { display: flex; gap: 8px; align-items: center; }
-        
-        .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; transition: all 0.3s ease; border-left: 5px solid transparent; }
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; border-left: 5px solid transparent; min-height: 60px; }
         .is-success { border-left-color: var(--success); background: var(--success-bg); }
         .is-warning { border-left-color: var(--accent); background: var(--warn-bg); }
-        
-        .warning-text { margin-top: 10px; padding: 10px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
-        
+        .warning-text { margin-top: 10px; padding: 8px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
         .save-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .save-btn:hover { background: #34495e; }
-
-        .canvas-container { flex-grow: 1; padding: 10px; display: flex; justify-content: flex-start; align-items: flex-start; }
-        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; }
+        .canvas-container { flex-grow: 1; padding: 10px; display: flex; justify-content: center; }
+        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; border: 1px solid #ddd; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -38,15 +31,14 @@
     <div class="header">
         <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
         <h2>Automation Express</h2>
-        <p style="font-size: 0.9em; color: #666; font-weight: bold; margin-top: 5px;">Blisterberechnung</p>
+        <p style="font-size: 0.8em; color: #666;">Blister-Kalkulator</p>
     </div>
 
     <div class="info-box">
         <strong>Vorgaben:</strong><br>
         Blister: 1200 x 800 mm<br>
         Nutzfläche: 1000 x 700 mm<br>
-        Max. Last: 180 kg<br>
-        Max. Höhe: 175 mm
+        Max. Last: 180 kg | Max. Höhe: 175 mm
     </div>
     
     <div class="input-group">
@@ -75,10 +67,114 @@
     </div>
 
     <div class="input-group">
-        <label>Höhe (max. 175 mm)</label>
-        <input type="number" id="partH" value="50" max="175" oninput="calculate()">
+        <label>Bauteilhöhe (mm) - Max. 175</label>
+        <input type="number" id="partH" value="50" oninput="calculate()">
     </div>
 
     <div class="input-group">
         <label>Material</label>
-        <select id="material" onchange="calculate
+        <select id="material" onchange="calculate()">
+            <option value="7.85">Stahl (7.85 g/cm³)</option>
+            <option value="2.7">Aluminium (2.7 g/cm³)</option>
+            <option value="1.41">Kunststoff POM (1.41 g/cm³)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Abstand zw. Bauteilen (mm)</label>
+        <input type="number" id="gap" value="15" oninput="calculate()">
+    </div>
+
+    <div id="resultText" class="output"></div>
+    <button class="save-btn" onclick="saveAsImage()">Ansicht als Bild speichern</button>
+</div>
+
+<div class="canvas-container">
+    <canvas id="layoutCanvas"></canvas>
+</div>
+
+<script>
+const VIS_W = 1200, VIS_H = 800, USE_W = 1000, USE_H = 700, MAX_KG = 180, MAX_H = 175;
+
+function toggleInputs() {
+    const shape = document.getElementById('shapeType').value;
+    document.getElementById('rectInputs').classList.toggle('hidden', shape !== 'rect');
+    document.getElementById('circleInputs').classList.toggle('hidden', shape !== 'circle');
+    calculate();
+}
+
+function calculate() {
+    const canvas = document.getElementById('layoutCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Eingaben laden & validieren
+    let gap = parseFloat(document.getElementById('gap').value) || 15;
+    if (gap < 1) gap = 1;
+
+    let h = parseFloat(document.getElementById('partH').value) || 0;
+    if (h > MAX_H) { h = MAX_H; document.getElementById('partH').value = MAX_H; }
+
+    const shape = document.getElementById('shapeType').value;
+    const dens = parseFloat(document.getElementById('material').value) || 7.85;
+    const matName = document.getElementById('material').options[document.getElementById('material').selectedIndex].text;
+
+    let pw, pl, vol;
+    if (shape === 'rect') {
+        pw = parseFloat(document.getElementById('partW').value) || 10;
+        pl = parseFloat(document.getElementById('partL').value) || 10;
+        vol = (pw * pl * h) / 1000;
+    } else {
+        pw = pl = parseFloat(document.getElementById('partD').value) || 10;
+        vol = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
+    }
+
+    // Berechnung Gitter
+    const cols = Math.floor((USE_W + gap) / (pw + gap)) || 0;
+    const rows = Math.floor((USE_H + gap) / (pl + gap)) || 0;
+    const total = cols * rows;
+    const weightPerPart = (vol * dens) / 1000;
+    const totalWeight = total * weightPerPart;
+
+    const isUnstable = (h > Math.min(pw, pl) * 1.5);
+    const isOver = totalWeight > MAX_KG;
+
+    // Canvas zeichnen
+    const sc = 0.6;
+    canvas.width = VIS_W * sc;
+    canvas.height = VIS_H * sc;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Nutzzone
+    ctx.strokeStyle = "#eee";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(((VIS_W-USE_W)/2)*sc, ((VIS_H-USE_H)/2)*sc, USE_W*sc, USE_H*sc);
+
+    // Bauteile zeichnen
+    if (total > 0) {
+        ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
+        const offX = (VIS_W - (cols * (pw + gap) - gap)) / 2;
+        const offY = (VIS_H - (rows * (pl + gap) - gap)) / 2;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = (offX + c * (pw + gap)) * sc;
+                const y = (offY + r * (pl + gap)) * sc;
+                if (shape === 'rect') {
+                    ctx.fillRect(x, y, pw * sc, pl * sc);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(x + (pw/2)*sc, y + (pl/2)*sc, (pw/2)*sc, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    // Ergebnis Text
+    const resDiv = document.getElementById('resultText');
+    resDiv.className = 'output ' + ( (isUnstable || isOver) ? 'is-warning' : 'is-success' );
+    resDiv.innerHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stk. (${cols}x${rows})<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
+    
+    if (isOver) resDiv.innerHTML += `<div class="warning-text">⚠ ÜBERLAST (Max 180
