@@ -6,22 +6,21 @@
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --danger: #e74c3c; --success: #2ecc71; --warn-bg: #fff3e0; --success-bg: #eafaf1; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; gap: 20px; padding: 20px; background: #f0f2f5; margin: 0; min-height: 100vh; }
-        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; height: fit-content; }
+        .controls { width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-shrink: 0; }
         .header { text-align: center; margin-bottom: 20px; }
-        .logo { max-width: 150px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
-        h2 { color: var(--primary); font-size: 1.4em; margin: 0; }
+        .logo { max-width: 150px; margin-bottom: 10px; }
         .info-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 0.85em; }
         .input-group { margin-bottom: 12px; }
         label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
         .row { display: flex; gap: 8px; align-items: center; }
-        .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; border-left: 5px solid transparent; min-height: 60px; }
+        .output { margin-top: 20px; padding: 15px; border-radius: 8px; line-height: 1.6; border-left: 5px solid transparent; min-height: 50px; }
         .is-success { border-left-color: var(--success); background: var(--success-bg); }
         .is-warning { border-left-color: var(--accent); background: var(--warn-bg); }
         .warning-text { margin-top: 10px; padding: 8px; border-radius: 6px; background: #fdeaea; color: var(--danger); font-size: 0.85em; font-weight: bold; border: 1px solid var(--danger); }
         .save-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .canvas-container { flex-grow: 1; padding: 10px; display: flex; justify-content: center; }
-        canvas { border-radius: 8px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 100%; height: auto; border: 1px solid #ddd; }
+        .canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: flex-start; }
+        canvas { background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #ddd; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -30,20 +29,18 @@
 <div class="controls">
     <div class="header">
         <img src="logo.png" alt="Automation Express" class="logo" onerror="this.style.display='none'">
-        <h2>Automation Express</h2>
+        <h2 style="color: var(--primary); margin:0;">Automation Express</h2>
         <p style="font-size: 0.8em; color: #666;">Blister-Kalkulator</p>
     </div>
 
     <div class="info-box">
-        <strong>Vorgaben:</strong><br>
-        Blister: 1200 x 800 mm<br>
-        Nutzfläche: 1000 x 700 mm<br>
-        Max. Last: 180 kg | Max. Höhe: 175 mm
+        Blister: 1200x800 | Nutzfläche: 1000x700<br>
+        Max: 180 kg | Max. Höhe: 175 mm
     </div>
     
     <div class="input-group">
         <label>Bauteilform</label>
-        <select id="shapeType" onchange="toggleInputs()">
+        <select id="shapeType" onchange="updateUI()">
             <option value="rect">Rechteckig</option>
             <option value="circle">Rund (Zylinder)</option>
         </select>
@@ -53,8 +50,8 @@
         <div class="input-group">
             <label>Maße (B x L) mm</label>
             <div class="row">
-                <input type="number" id="partW" value="100" oninput="calculate()"> x 
-                <input type="number" id="partL" value="80" oninput="calculate()">
+                <input type="number" id="partW" value="100" oninput="run()"> x 
+                <input type="number" id="partL" value="80" oninput="run()">
             </div>
         </div>
     </div>
@@ -62,18 +59,18 @@
     <div id="circleInputs" class="hidden">
         <div class="input-group">
             <label>Durchmesser (mm)</label>
-            <input type="number" id="partD" value="80" oninput="calculate()">
+            <input type="number" id="partD" value="80" oninput="run()">
         </div>
     </div>
 
     <div class="input-group">
         <label>Bauteilhöhe (mm) - Max. 175</label>
-        <input type="number" id="partH" value="50" oninput="calculate()">
+        <input type="number" id="partH" value="50" oninput="run()">
     </div>
 
     <div class="input-group">
         <label>Material</label>
-        <select id="material" onchange="calculate()">
+        <select id="material" onchange="run()">
             <option value="7.85">Stahl (7.85 g/cm³)</option>
             <option value="2.7">Aluminium (2.7 g/cm³)</option>
             <option value="1.41">Kunststoff POM (1.41 g/cm³)</option>
@@ -81,46 +78,43 @@
     </div>
 
     <div class="input-group">
-        <label>Abstand zw. Bauteilen (mm)</label>
-        <input type="number" id="gap" value="15" oninput="calculate()">
+        <label>Abstand (mm)</label>
+        <input type="number" id="gap" value="15" oninput="run()">
     </div>
 
     <div id="resultText" class="output"></div>
-    <button class="save-btn" onclick="saveAsImage()">Ansicht als Bild speichern</button>
+    <button class="save-btn" onclick="save()">Bild speichern</button>
 </div>
 
 <div class="canvas-container">
-    <canvas id="layoutCanvas"></canvas>
+    <canvas id="cvs"></canvas>
 </div>
 
 <script>
-const VIS_W = 1200, VIS_H = 800, USE_W = 1000, USE_H = 700, MAX_KG = 180, MAX_H = 175;
+// Konstanten
+const VW=1200, VH=800, UW=1000, UH=700, MKG=180, MH=175;
 
-function toggleInputs() {
-    const shape = document.getElementById('shapeType').value;
-    document.getElementById('rectInputs').classList.toggle('hidden', shape !== 'rect');
-    document.getElementById('circleInputs').classList.toggle('hidden', shape !== 'circle');
-    calculate();
+function updateUI() {
+    const s = document.getElementById('shapeType').value;
+    document.getElementById('rectInputs').className = s === 'rect' ? '' : 'hidden';
+    document.getElementById('circleInputs').className = s === 'circle' ? '' : 'hidden';
+    run();
 }
 
-function calculate() {
-    const canvas = document.getElementById('layoutCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+function run() {
+    const cvs = document.getElementById('cvs');
+    const ctx = cvs.getContext('2d');
     
-    // Eingaben laden & validieren
-    let gap = parseFloat(document.getElementById('gap').value) || 15;
-    if (gap < 1) gap = 1;
-
-    let h = parseFloat(document.getElementById('partH').value) || 0;
-    if (h > MAX_H) { h = MAX_H; document.getElementById('partH').value = MAX_H; }
-
+    // Werte holen
+    let h = Math.min(parseFloat(document.getElementById('partH').value) || 0, MH);
+    document.getElementById('partH').value = h;
+    
+    let g = Math.max(parseFloat(document.getElementById('gap').value) || 0, 1);
     const shape = document.getElementById('shapeType').value;
-    const dens = parseFloat(document.getElementById('material').value) || 7.85;
-    const matName = document.getElementById('material').options[document.getElementById('material').selectedIndex].text;
-
+    const dens = parseFloat(document.getElementById('material').value);
+    
     let pw, pl, vol;
-    if (shape === 'rect') {
+    if(shape === 'rect') {
         pw = parseFloat(document.getElementById('partW').value) || 10;
         pl = parseFloat(document.getElementById('partL').value) || 10;
         vol = (pw * pl * h) / 1000;
@@ -129,52 +123,50 @@ function calculate() {
         vol = (Math.PI * Math.pow(pw/2, 2) * h) / 1000;
     }
 
-    // Berechnung Gitter
-    const cols = Math.floor((USE_W + gap) / (pw + gap)) || 0;
-    const rows = Math.floor((USE_H + gap) / (pl + gap)) || 0;
-    const total = cols * rows;
-    const weightPerPart = (vol * dens) / 1000;
-    const totalWeight = total * weightPerPart;
+    const nx = Math.floor((UW + g) / (pw + g)) || 0;
+    const ny = Math.floor((UH + g) / (pl + g)) || 0;
+    const total = nx * ny;
+    const weight = (total * vol * dens) / 1000;
 
-    const isUnstable = (h > Math.min(pw, pl) * 1.5);
-    const isOver = totalWeight > MAX_KG;
+    // Zeichnen (Maßstab 0.5)
+    const s = 0.5;
+    cvs.width = VW * s; cvs.height = VH * s;
+    ctx.fillStyle = "white"; ctx.fillRect(0,0,cvs.width, cvs.height);
+    ctx.strokeStyle = "#eee"; ctx.strokeRect(((VW-UW)/2)*s, ((VH-UH)/2)*s, UW*s, UH*s);
 
-    // Canvas zeichnen
-    const sc = 0.6;
-    canvas.width = VIS_W * sc;
-    canvas.height = VIS_H * sc;
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Nutzzone
-    ctx.strokeStyle = "#eee";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(((VIS_W-USE_W)/2)*sc, ((VIS_H-USE_H)/2)*sc, USE_W*sc, USE_H*sc);
-
-    // Bauteile zeichnen
-    if (total > 0) {
-        ctx.fillStyle = (shape === 'rect') ? "#2c3e50" : "#e67e22";
-        const offX = (VIS_W - (cols * (pw + gap) - gap)) / 2;
-        const offY = (VIS_H - (rows * (pl + gap) - gap)) / 2;
-
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const x = (offX + c * (pw + gap)) * sc;
-                const y = (offY + r * (pl + gap)) * sc;
-                if (shape === 'rect') {
-                    ctx.fillRect(x, y, pw * sc, pl * sc);
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(x + (pw/2)*sc, y + (pl/2)*sc, (pw/2)*sc, 0, Math.PI*2);
-                    ctx.fill();
-                }
+    if(total > 0) {
+        ctx.fillStyle = shape === 'rect' ? "#2c3e50" : "#e67e22";
+        const ox = (VW - (nx*(pw+g)-g))/2, oy = (VH - (ny*(pl+g)-g))/2;
+        for(let r=0; r<ny; r++) {
+            for(let c=0; c<nx; c++) {
+                let x = (ox + c*(pw+g))*s, y = (oy + r*(pl+g))*s;
+                if(shape === 'rect') ctx.fillRect(x,y,pw*s,pl*s);
+                else { ctx.beginPath(); ctx.arc(x+(pw/2)*s, y+(pl/2)*s, (pw/2)*s, 0, 7); ctx.fill(); }
             }
         }
     }
 
-    // Ergebnis Text
-    const resDiv = document.getElementById('resultText');
-    resDiv.className = 'output ' + ( (isUnstable || isOver) ? 'is-warning' : 'is-success' );
-    resDiv.innerHTML = `<strong>Ergebnis:</strong><br>Anzahl: ${total} Stk. (${cols}x${rows})<br>Gesamtgewicht: <strong>${totalWeight.toFixed(1)} kg</strong>`;
+    // Anzeige
+    const res = document.getElementById('resultText');
+    const warn = (weight > MKG || (h > Math.min(pw,pl)*1.5));
+    res.className = 'output ' + (warn ? 'is-warning' : 'is-success');
+    res.innerHTML = `Anzahl: ${total} Stk.<br>Gewicht: <strong>${weight.toFixed(1)} kg</strong>`;
+    if(weight > MKG) res.innerHTML += `<div class="warning-text">⚠ ÜBERLAST (>180kg)</div>`;
+    if(h > Math.min(pw,pl)*1.5) res.innerHTML += `<div class="warning-text">⚠ KIPPGEFAHR</div>`;
     
-    if (isOver) resDiv.innerHTML += `<div class="warning-text">⚠ ÜBERLAST (Max 180
+    window.data = { total, weight, pw, pl, h, shape, g };
+}
+
+function save() {
+    const c = document.getElementById('cvs');
+    const link = document.createElement('a');
+    link.download = 'Blister.png';
+    link.href = c.toDataURL();
+    link.click();
+}
+
+// Sofort-Start
+window.onload = updateUI;
+</script>
+</body>
+</html>
